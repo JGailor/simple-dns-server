@@ -33,17 +33,25 @@
     (.receive socket packet)
     (.getData packet)))
 
-(defn process-question
+(defn process-headers
+  "Process the 12-byte header into the appropriate fields"
+  [header]
+  (let [id-field (bytes->int (byte-array (take 2 header)))
+        qr-field (bit-and 1 (first (drop 2 header)))
+        opcode-field (bit-and 15 (bit-shift-right (first (drop 2 header)) 1))]
+    (hash-map :id-field id-field :qr-field qr-field :opcode-field opcode-field)))
+
+(defn process-questions
+  "Process the variable length question field from the DNS request"
+  [questions]
+  (String. (byte-array questions) 0 (count questions)))
+
+(defn process-data
   "Processes a DNS request into a header and a question"
   [data]
   (let [header (take 12 data)
-        question (drop 12 data)
-        id-field (bytes->int (byte-array (take 2 header)))
-        qr-field (bit-and 1 (first (drop 2 header)))
-        opcode-field (bit-and 15 (bit-shift-right (first (drop 2 header)) 1))
-        header-msg (str "header: " (String. (byte-array header) 0 (count header)))
-        question-msg (str "question: " (String. (byte-array question) 0 (count question)))]
-    [header-msg id-field qr-field opcode-field question-msg]))
+        questions (drop 12 data)]
+    (hash-map :headers (process-headers header) :questions (process-questions questions))))
 
 (defn receive-loop
   "Given a function and DatagramSocket, will (in another thread)
@@ -52,6 +60,15 @@
    [socket f]
    (future (while true (f (receive socket)))))
 
-(def socket (DatagramSocket. 53))
+(defn display-data
+  "Prints out the data from the packet for debugging purposes"
+  [data]
+  (let [{headers :headers questions :questions} (process-data data)
+        output (map (fn [entry] (str (name (first entry)) ": " (second entry))) headers)]
+    (println (str (clojure.string/join "\n" output) "\n" questions "\n"))))
 
-(receive-loop socket (fn [data] (println (clojure.string/join "\n" (process-question data)))))
+(defn -main
+  "Kicks this pig"
+  [& args]
+  (let [socket (DatagramSocket. 53)]
+    (receive-loop socket display-data)))
