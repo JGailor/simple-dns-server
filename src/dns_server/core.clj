@@ -13,15 +13,15 @@
         (byte-array)
         (biginteger))))
 
-(defn hash-entry-to-string
+(defn hash-entry->string
   "Converts a hash entry to printable string"
   [entry width]
   (str (format (str "%-" width "s") (str (name (first entry)) ": ")) (second entry)))
 
-(defn hash-to-string
+(defn hash->string
   "Converts a hash to a printable string"
   [hashy-thing width]
-  (clojure.string/join "\n" (map #(hash-entry-to-string % width) hashy-thing)))
+  (clojure.string/join "\n" (map #(hash-entry->string % width) hashy-thing)))
 
 (defn send
   "Send a short textual message over a DatagramSocket to the specified
@@ -114,8 +114,8 @@
   "Prints out the data from the packet for debugging purposes"
   [data]
   (let [{headers :headers questions :questions} (process-data data)
-        header-output (hash-to-string headers 15)
-        questions-output (hash-to-string questions 15)]
+        header-output (hash->string headers 15)
+        questions-output (hash->string questions 15)]
     (println (str header-output "\n" questions-output "\n"))))
 
 (defn -main
